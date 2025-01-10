@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Dự án Sáng tạo Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #1a1a2e;
+            color: #e94560;
+        }
+
+        .project-card {
+            background-color: #16213e;
+            transition: all 0.3s ease;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(233, 69, 96, 0.2);
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .hexagon {
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        }
+
+        .modal {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content {
+            background-color: #16213e;
+            color: #ffffff;
+        }
+
+        .tab-button {
+            background-color: #1a1a2e;
+            color: #e94560;
+        }
+
+        .tab-button.active {
+            background-color: #e94560;
+            color: #ffffff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #e94560;
+            border-radius: 20px;
+            border: 3px solid #1a1a2e;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <header class="mb-8">
+        <h1 class="text-4xl font-bold text-center text-white mb-4">Quản lý Dự án</h1>
+        <div class="flex flex-wrap justify-center gap-4">
+            <input type="text" id="searchInput" placeholder="Tìm kiếm" class="bg-[#16213e] text-white p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+            <select id="sortSelect" class="bg-[#16213e] text-white p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <option value="name">Tên</option>
+                <option value="deadline">Thời hạn</option>
+                <option value="status">Trạng thái</option>
+            </select>
+            <button id="addProjectBtn" class="bg-[#e94560] text-white p-2 rounded-full hover:bg-[#c73851] transition duration-300">
+                <i class="fas fa-plus mr-2"></i>Thêm
+            </button>
+            <button id="showDashboardBtn" class="bg-[#4a69bd] text-white p-2 rounded-full hover:bg-[#3c5aa6] transition duration-300">
+                <i class="fas fa-chart-line mr-2"></i>Dashboard
+            </button>
+        </div>
+    </header>
+
+    <main id="projectList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Danh sách dự án sẽ được thêm vào đây bằng JavaScript -->
+    </main>
+
+    <!-- Modal thêm/chỉnh sửa dự án -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-[#16213e] p-8 rounded-lg w-full max-w-md">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-4 text-white">Thêm Dự án Mới</h2>
+            <form id="projectForm" class="space-y-4">
+                <input type="hidden" id="projectId">
+                <input type="text" id="name" name="name" placeholder="Tên dự án" required class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <textarea id="description" name="description" placeholder="Mô tả dự án" required class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560] h-32"></textarea>
+                <input type="text" id="owner" name="owner" placeholder="Người phụ trách" required class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <input type="date" id="deadline" name="deadline" required class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <select id="status" name="status" required class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                    <option value="Chưa bắt đầu">Chưa bắt đầu</option>
+                    <option value="Đang thực hiện">Đang thực hiện</option>
+                    <option value="Hoàn thành">Hoàn thành</option>
+                </select>
+                <div class="flex justify-between">
+                    <button type="submit" class="bg-[#e94560] text-white p-2 rounded-md hover:bg-[#c73851] transition duration-300">Lưu</button>
+                    <button type="button" id="cancelBtn" class="bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 transition duration-300">Hủy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal chi tiết dự án -->
+    <div id="projectDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center modal z-50">
+        <div class="bg-[#16213e] p-8 rounded-lg w-full max-w-4xl modal-content max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <h2 id="detailModalTitle" class="text-2xl font-bold mb-4 text-white"></h2>
+            <div class="mb-4">
+                <div class="flex space-x-2 mb-4 flex-wrap">
+                    <button class="tab-button active" data-tab="info">Thông tin</button>
+                    <button class="tab-button" data-tab="notes">Ghi chú</button>
+                    <button class="tab-button" data-tab="additional">Bổ sung</button>
+                    <button class="tab-button" data-tab="source">Mã nguồn</button>
+                    <button class="tab-button" data-tab="access">Truy cập</button>
+                    <button class="tab-button" data-tab="tasks">Công việc</button>
+                </div>
+                <div id="infoTab" class="tab-content active">
+                    <!-- Thông tin dự án sẽ được thêm vào đây -->
+                </div>
+                <div id="notesTab" class="tab-content">
+                    <textarea id="projectNotes" class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560] h-32" placeholder="Thêm ghi chú cho dự án..."></textarea>
+                    <button id="saveNotes" class="mt-2 bg-[#e94560] text-white p-2 rounded-md hover:bg-[#c73851] transition duration-300">Lưu ghi chú</button>
+                </div>
+                <div id="additionalTab" class="tab-content">
+                    <textarea id="additionalInfo" class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560] h-32" placeholder="Thêm thông tin bổ sung..."></textarea>
+                    <button id="saveAdditional" class="mt-2 bg-[#e94560] text-white p-2 rounded-md hover:bg-[#c73851] transition duration-300">Lưu thông tin</button>
+                </div>
+                <div id="sourceTab" class="tab-content">
+                    <textarea id="sourceCode" class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560] h-32" placeholder="Nhập mã nguồn hoặc link đến repository..."></textarea>
+                    <button id="saveSource" class="mt-2 bg-[#e94560] text-white p-2 rounded-md hover:bg-[#c73851] transition duration-300">Lưu mã nguồn</button>
+                </div>
+                <div id="accessTab" class="tab-content">
+                    <p id="clickCount" class="mb-2">Số lượt truy cập: 0</p>
+                    <input type="text" id="demoLink" class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560]" placeholder="Nhập link demo...">
+                    <button id="saveDemoLink" class="mt-2 bg-[#e94560] text-white p-2 rounded-md hover:bg-[#c73851] transition duration-300">Lưu link demo</button>
+                </div>
+                <div id="tasksTab" class="tab-content">
+                    <div id="taskList" class="mb-4">
+                        <!-- Danh sách công việc sẽ được thêm vào đây -->
+                    </div>
+                    <input type="text" id="newTaskInput" placeholder="Thêm công việc mới..." class="w-full p-2 bg-[#1a1a2e] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#e94560] mb-2">
+                    <button id="addTaskBtn" class="bg-[#e94560] text-white p-2 rounded-md hover:bg-[#c73851] transition duration-300">Thêm công việc</button>
+                </div>
+            </div>
+            <button id="closeDetailBtn" class="bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 transition duration-300">Đóng</button>
+        </div>
+    </div>
+
+    <!-- Modal Dashboard -->
+    <div id="dashboardModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-[#16213e] p-8 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <h2 class="text-2xl font-bold mb-4 text-white">Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div class="bg-[#1a1a2e] p-4 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-2 text-white">Tổng quan dự án</h3>
+                    <canvas id="projectStatusChart"></canvas>
+                </div>
+                <div class="bg-[#1a1a2e] p-4 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-2 text-white">Tiến độ dự án</h3>
+                    <canvas id="projectProgressChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-[#1a1a2e] p-4 rounded-lg mb-4">
+                <h3 class="text-xl font-semibold mb-2 text-white">Dự án sắp đến hạn</h3>
+                <ul id="upcomingDeadlines" class="list-disc pl-5 text-white">
+                    <!-- Danh sách dự án sắp đến hạn sẽ được thêm vào đây -->
+                </ul>
+            </div>
+            <button id="closeDashboardBtn" class="bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 transition duration-300">Đóng</button>
+        </div>
+    </div>
+
+    <script>
+        let projectStatusChart = null;
+        let projectProgressChart = null;
+        const API_KEY = '$2a$10$2zPBGlXPIIFiPBosZNwYtOBhikSZatc/MmnTrx7Sa.Qyoob6Ifk3m';
+        const BIN_ID = '67809160ad19ca34f8e899f4';
+
+        let projects = [];
+
+        async function fetchProjects() {
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const data = await response.json();
+                projects = data.record.projects || [];
+                displayProjects();
+            } catch (error) {
+                console.error('Lỗi khi lấy dự án:', error);
+            }
+        }
+
+        async function saveProjects() {
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify({ projects })
+                });
+            } catch (error) {
+                console.error('Lỗi khi lưu dự án:', error);
+            }
+        }
+
+        function displayProjects() {
+            const projectList = document.getElementById('projectList');
+            projectList.innerHTML = '';
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const sortBy = document.getElementById('sortSelect').value;
+
+            let filteredProjects = projects.filter(project => 
+                project.name.toLowerCase().includes(searchTerm) ||
+                project.description.toLowerCase().includes(searchTerm) ||
+                project.owner.toLowerCase().includes(searchTerm)
+            );
+
+            filteredProjects.sort((a, b) => {
+                if (sortBy === 'deadline') {
+                    return new Date(a.deadline) - new Date(b.deadline);
+                } else if (sortBy === 'status') {
+                    return a.status.localeCompare(b.status);
+                } else {
+                    return a.name.localeCompare(b.name);
+                }
+            });
+
+            filteredProjects.forEach((project) => {
+                const projectCard = document.createElement('div');
+                projectCard.className = 'project-card p-6 rounded-lg relative overflow-hidden cursor-pointer';
+                projectCard.onclick = () => showProjectDetails(project.id);
+                
+                const statusColor = project.status === 'Hoàn thành' ? 'bg-green-500' :
+                                    project.status === 'Đang thực hiện' ? 'bg-yellow-500' :
+                                    'bg-red-500';
+                
+                projectCard.innerHTML = `
+                    <div class="hexagon ${statusColor} w-16 h-16 absolute -top-8 -right-8 flex items-center justify-center">
+                        <i class="fas fa-tasks text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-4 pr-12">${project.name}</h3>
+                    <p class="text-gray-400 mb-4 h-20 overflow-hidden">${project.description}</p>
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-user text-[#e94560] mr-2"></i>
+                        <span class="text-white">${project.owner}</span>
+                    </div>
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-calendar-alt text-[#e94560] mr-2"></i>
+                        <span class="text-white">${project.deadline}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-white">
+                            <span class="status-indicator ${statusColor}"></span>
+                            ${project.status}
+                        </span>
+                        <div class="space-x-2">
+                            <button onclick="editProject('${project.id}')" class="text-[#e94560] hover:text-white transition duration-300">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteProject('${project.id}', event)" class="text-[#e94560] hover:text-white transition duration-300">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                projectList.appendChild(projectCard);
+            });
+        }
+
+        function showProjectDetails(id) {
+            const project = projects.find(p => p.id === id);
+            if (project) {
+                document.getElementById('detailModalTitle').textContent = project.name;
+                document.getElementById('detailModalTitle').setAttribute('data-project-id', project.id);
+                document.getElementById('infoTab').innerHTML = `
+                    <p><strong>Mô tả:</strong> ${project.description}</p>
+                    <p><strong>Người phụ trách:</strong> ${project.owner}</p>
+                    <p><strong>Thời hạn:</strong> ${project.deadline}</p>
+                    <p><strong>Trạng thái:</strong> ${project.status}</p>
+                `;
+                document.getElementById('projectNotes').value = project.notes || '';
+                document.getElementById('additionalInfo').value = project.additionalInfo || '';
+                document.getElementById('sourceCode').value = project.sourceCode || '';
+                document.getElementById('clickCount').textContent = `Số lượt truy cập: ${project.clickCount || 0}`;
+                document.getElementById('demoLink').value = project.demoLink || '';
+
+                displayTasks(project);
+
+                document.getElementById('projectDetailModal').classList.remove('hidden');
+                document.getElementById('projectDetailModal').classList.add('flex');
+
+                project.clickCount = (project.clickCount || 0) + 1;
+                saveProjects();
+            }
+        }
+
+        function displayTasks(project) {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+            if (project.tasks && project.tasks.length > 0) {
+                project.tasks.forEach((task, index) => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = 'flex items-center justify-between bg-[#1a1a2e] p-2 rounded-md mb-2';
+                    taskItem.innerHTML = `
+                        <span class="${task.completed ? 'line-through' : ''}">${task.name}</span>
+                        <div>
+                            <button onclick="toggleTaskCompletion('${project.id}', ${index})" class="text-[#e94560] hover:text-white transition duration-300 mr-2">
+                                <i class="fas ${task.completed ? 'fa-check-square' : 'fa-square'}"></i>
+                            </button>
+                            <button onclick="deleteTask('${project.id}', ${index})" class="text-[#e94560] hover:text-white transition duration-300">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                    taskList.appendChild(taskItem);
+                });
+            } else {
+                taskList.innerHTML = '<p class="text-gray-400">Chưa có công việc nào.</p>';
+            }
+        }
+
+        async function toggleTaskCompletion(projectId, taskIndex) {
+            const project = projects.find(p => p.id === projectId);
+            if (project && project.tasks[taskIndex]) {
+                project.tasks[taskIndex].completed = !project.tasks[taskIndex].completed;
+                await saveProjects();
+                displayTasks(project);
+            }
+        }
+
+        async function deleteTask(projectId, taskIndex) {
+            const project = projects.find(p => p.id === projectId);
+            if (project && project.tasks[taskIndex]) {
+                project.tasks.splice(taskIndex, 1);
+                await saveProjects();
+                displayTasks(project);
+            }
+        }
+
+        function editProject(id) {
+            const project = projects.find(p => p.id === id);
+            if (project) {
+                document.getElementById('projectId').value = project.id;
+                document.getElementById('name').value = project.name;
+                document.getElementById('description').value = project.description;
+                document.getElementById('owner').value = project.owner;
+                document.getElementById('deadline').value = project.deadline;
+                document.getElementById('status').value = project.status;
+                showModal('Chỉnh sửa Dự án');
+            }
+        }
+
+        function deleteProject(id, event) {
+            event.stopPropagation();
+            if (confirm('Bạn có chắc chắn muốn xóa dự án này?')) {
+                const index = projects.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    projects.splice(index, 1);
+                    saveProjects();
+                    displayProjects();
+                }
+            }
+        }
+
+        function showModal(title = 'Thêm Dự án Mới') {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('projectModal').classList.remove('hidden');
+            document.getElementById('projectModal').classList.add('flex');
+        }
+
+        function hideModal() {
+            document.getElementById('projectModal').classList.add('hidden');
+            document.getElementById('projectModal').classList.remove('flex');
+            document.getElementById('projectForm').reset();
+            document.getElementById('projectId').value = '';
+        }
+
+        document.getElementById('addProjectBtn').addEventListener('click', () => showModal());
+        document.getElementById('cancelBtn').addEventListener('click', hideModal);
+        document.getElementById('closeDetailBtn').addEventListener('click', () => {
+            document.getElementById('projectDetailModal').classList.add('hidden');
+            document.getElementById('projectDetailModal').classList.remove('flex');
+        });
+
+        document.getElementById('projectForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const projectData = Object.fromEntries(formData.entries());
+            const projectId = document.getElementById('projectId').value;
+
+            if (projectId === '') {
+                const newProject = {
+                    ...projectData,
+                    id: Date.now().toString(),
+                    clickCount: 0,
+                    tasks: []
+                };
+                projects.push(newProject);
+            } else {
+                const index = projects.findIndex(p => p.id === projectId);
+                if (index !== -1) {
+                    projects[index] = { ...projects[index], ...projectData };
+                }
+            }
+
+            await saveProjects();
+            hideModal();
+            displayProjects();
+        });
+
+        document.getElementById('searchInput').addEventListener('input', displayProjects);
+        document.getElementById('sortSelect').addEventListener('change', displayProjects);
+
+        document.getElementById('addTaskBtn').addEventListener('click', async () => {
+            const projectId = document.getElementById('detailModalTitle').getAttribute('data-project-id');
+            const newTaskInput = document.getElementById('newTaskInput');
+            const taskName = newTaskInput.value.trim();
+            if (taskName) {
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    project.tasks = project.tasks || [];
+                    project.tasks.push({ name: taskName, completed: false });
+                    await saveProjects();
+                    displayTasks(project);
+                    newTaskInput.value = '';
+                }
+            }
+        });
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.getAttribute('data-tab');
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById(`${tabName}Tab`).classList.add('active');
+            });
+        });
+
+        document.getElementById('saveNotes').addEventListener('click', async () => {
+            const projectId = document.getElementById('detailModalTitle').getAttribute('data-project-id');
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                project.notes = document.getElementById('projectNotes').value;
+                await saveProjects();
+                alert('Đã lưu ghi chú');
+            }
+        });
+
+        document.getElementById('saveAdditional').addEventListener('click', async () => {
+            const projectId = document.getElementById('detailModalTitle').getAttribute('data-project-id');
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                project.additionalInfo = document.getElementById('additionalInfo').value;
+                await saveProjects();
+                alert('Đã lưu thông tin bổ sung');
+            }
+        });
+
+        document.getElementById('saveSource').addEventListener('click', async () => {
+            const projectId = document.getElementById('detailModalTitle').getAttribute('data-project-id');
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                project.sourceCode = document.getElementById('sourceCode').value;
+                await saveProjects();
+                alert('Đã lưu mã nguồn');
+            }
+        });
+
+        document.getElementById('saveDemoLink').addEventListener('click', async () => {
+            const projectId = document.getElementById('detailModalTitle').getAttribute('data-project-id');
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                project.demoLink = document.getElementById('demoLink').value;
+                await saveProjects();
+                alert('Đã lưu link demo');
+            }
+        });
+
+        document.getElementById('showDashboardBtn').addEventListener('click', showDashboard);
+        document.getElementById('closeDashboardBtn').addEventListener('click', () => {
+            document.getElementById('dashboardModal').classList.add('hidden');
+            document.getElementById('dashboardModal').classList.remove('flex');
+        });
+
+        function showDashboard() {
+            updateProjectStatusChart();
+            updateProjectProgressChart();
+            updateUpcomingDeadlines();
+            document.getElementById('dashboardModal').classList.remove('hidden');
+            document.getElementById('dashboardModal').classList.add('flex');
+        }
+
+        function updateProjectStatusChart() {
+            const statusCounts = {
+                'Chưa bắt đầu': 0,
+                'Đang thực hiện': 0,
+                'Hoàn thành': 0
+            };
+
+            projects.forEach(project => {
+                statusCounts[project.status]++;
+            });
+
+            const ctx = document.getElementById('projectStatusChart').getContext('2d');
+            
+            if (projectStatusChart) {
+                projectStatusChart.destroy();
+            }
+            
+            projectStatusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        data: Object.values(statusCounts),
+                        backgroundColor: ['#e94560', '#fca311', '#2a9d8f']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Trạng thái dự án',
+                            color: '#ffffff'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateProjectProgressChart() {
+            const completedTasks = projects.reduce((sum, project) => {
+                return sum + (project.tasks ? project.tasks.filter(task => task.completed).length : 0);
+            }, 0);
+
+            const totalTasks = projects.reduce((sum, project) => {
+                return sum + (project.tasks ? project.tasks.length : 0);
+            }, 0);
+
+            const ctx = document.getElementById('projectProgressChart').getContext('2d');
+            
+            if (projectProgressChart) {
+                projectProgressChart.destroy();
+            }
+            
+            projectProgressChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Hoàn thành', 'Chưa hoàn thành'],
+                    datasets: [{
+                        data: [completedTasks, totalTasks - completedTasks],
+                        backgroundColor: ['#2a9d8f', '#e9c46a']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Tiến độ công việc',
+                            color: '#ffffff'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateUpcomingDeadlines() {
+            const upcomingDeadlines = document.getElementById('upcomingDeadlines');
+            upcomingDeadlines.innerHTML = '';
+
+            const today = new Date();
+            const oneWeekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+            const sortedProjects = projects
+                .filter(project => {
+                    const deadline = new Date(project.deadline);
+                    return deadline > today && deadline <= oneWeekFromNow;
+                })
+                .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+
+            if (sortedProjects.length === 0) {
+                upcomingDeadlines.innerHTML = '<li class="text-gray-400">Không có dự án nào sắp đến hạn trong tuần tới.</li>';
+            } else {
+                sortedProjects.forEach(project => {
+                    const li = document.createElement('li');
+                    li.textContent = `${project.name} - ${project.deadline}`;
+                    upcomingDeadlines.appendChild(li);
+                });
+            }
+        }
+
+        // Initialize the application
+        fetchProjects();
+    </script>
+</body>
+</html>
+
